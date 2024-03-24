@@ -70,6 +70,14 @@ class Box {
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.width, this.height);
 
+        // setup draw coords to handle off-screen clipping adjustment
+        let drawX = mouse.x;
+        let drawY = mouse.y;
+
+        // next 2 lines are for testing a clipping edge-case and should be disabled
+        // ctx.fillStyle = "black"
+        // ctx.fillRect(50, 0, ctx.canvas.width / 2, 50)
+
         // once the box is drawn, check if the tooltip is visible
         if (this.showToolTip) {
 
@@ -89,16 +97,37 @@ class Box {
             let textDims = ctx.measureText(longestStr);
             let textW = Math.ceil(textDims.width);
             let textH = Math.ceil(textDims.actualBoundingBoxAscent + textDims.actualBoundingBoxDescent);
-            let ttMargin = 10 + textArr.length;
+            let ttMargin = 9 + textArr.length;
+
+            //set up measurements for use in position correction
+            let tooltipW = textW + (ttMargin / 2);
+            let tooltipH = textH + (ttMargin / 2);
+            let tooltipHMulti = textH * textArr.length + ttMargin;
+
+            let tooltipLeft = drawX - (ttMargin / 2);
+            let tooltipRight = drawX + tooltipW;
+            let tooltipTop = drawY + tooltipH;
+            let tooltipBottom = drawY + tooltipH + (textH * textArr.length + ttMargin);
+            
+            let canvasLeft = 0;
+            let canvasRight = ctx.canvas.width;
+            let canvasTop = 0;
+            let canvasBottom = ctx.canvas.height;
+            
+            // assign the draw coords with positional fixes if necessary
+            if (tooltipLeft < canvasLeft) drawX = 0 + (ttMargin / 2);
+            if (tooltipRight > canvasRight) drawX = canvasRight - tooltipW;
+            if (tooltipTop < canvasTop) drawY = 17 + tooltipH; // never triggers under normal circumstances
+            if (tooltipBottom > canvasBottom) drawY = canvasBottom - (tooltipH + tooltipHMulti);
 
             // draw the box that goes behind the tooltip text
-            ctx.fillStyle = "#999";
-            ctx.fillRect(mouse.x - (ttMargin / 2), mouse.y + textH + (ttMargin / 2), textW + ttMargin, (textH * textArr.length) + ttMargin);
+            ctx.fillStyle = "#aaa";
+            ctx.fillRect(drawX - (ttMargin / 2), drawY + textH + (ttMargin / 2), textW + ttMargin, (textH * textArr.length) + ttMargin);
 
             //draw the tooltip text. the for loop handles multiline strings
             ctx.fillStyle = "black";
             for (let i = 0; i < textArr.length; i++) {
-                ctx.fillText(textArr[i], mouse.x, 20 + mouse.y + textH + ((textH + 2) * i));
+                ctx.fillText(textArr[i], drawX, 20 + drawY + textH + ((textH + 2) * i));
             }
         }
     }
